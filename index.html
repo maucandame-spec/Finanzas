@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f1923">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Orden Financiero">
+<meta name="description" content="Tu herramienta de orden financiero personal">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Orden Financiero</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0f1923;
+    --bg2:      #16232f;
+    --bg3:      #1d2f3f;
+    --border:   rgba(255,255,255,0.08);
+    --text:     #e8f0f7;
+    --muted:    #7a9ab5;
+    --accent:   #00c896;
+    --accent2:  #ff6b4a;
+    --accent3:  #f5c842;
+    --danger:   #ff4a4a;
+    --card:     #1d2f3f;
+    --nav-h:    64px;
+    --safe-bot: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); }
+
+  /* ─── Layout ─── */
+  #app { display: flex; flex-direction: column; height: 100vh; height: -webkit-fill-available; }
+  #header { flex-shrink: 0; padding: 16px 20px 12px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  #header h1 { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: .02em; color: var(--accent); }
+  #header .subtitle { font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+  #content { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding-bottom: calc(var(--nav-h) + var(--safe-bot) + 12px); }
+  #nav { flex-shrink: 0; height: calc(var(--nav-h) + var(--safe-bot)); padding-bottom: var(--safe-bot); background: var(--bg2); border-top: 1px solid var(--border); display: flex; align-items: stretch; position: relative; z-index: 10; }
+
+  /* ─── Nav tabs ─── */
+  .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: all .2s; opacity: .45; border: none; background: none; color: var(--text); padding: 0; }
+  .nav-tab.active { opacity: 1; color: var(--accent); }
+  .nav-tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .nav-tab span { font-size: 10px; letter-spacing: .04em; font-weight: 500; }
+  .nav-tab.active span { color: var(--accent); }
+
+  /* ─── Screens ─── */
+  .screen { display: none; padding: 20px 16px; animation: fadeIn .25s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ─── Cards ─── */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+  .card-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 14px; }
+  .big-num { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; line-height: 1; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; letter-spacing: .03em; }
+  .tag.verde  { background: rgba(0,200,150,.15); color: #00c896; }
+  .tag.rojo   { background: rgba(255,74,74,.15);  color: #ff6b6b; }
+  .tag.amarillo { background: rgba(245,200,66,.15); color: #f5c842; }
+
+  /* ─── Sliders ─── */
+  .ctrl { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .ctrl label { font-size: 12px; color: var(--muted); min-width: 110px; }
+  .ctrl input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; height: 3px; border-radius: 3px; background: var(--bg3); outline: none; }
+  .ctrl input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 0 3px rgba(0,200,150,.2); }
+  .ctrl input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; }
+  .ctrl .val { font-size: 12px; font-weight: 500; min-width: 72px; text-align: right; color: var(--text); }
+
+  /* ─── Barra de segmentos ─── */
+  .seg-bar { display: flex; height: 28px; border-radius: 8px; overflow: hidden; margin: 10px 0 6px; }
+  .seg { height: 100%; transition: width .5s ease; }
+  .leyenda { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+  .leyenda-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  .sq { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ─── Gasto items ─── */
+  .gasto-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .gasto-row:last-child { border-bottom: none; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ─── Semáforo ─── */
+  .semaforo { width: 52px; height: 134px; background: #1a1a1a; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: space-around; padding: 8px 0; flex-shrink: 0; border: 1px solid rgba(255,255,255,.06); }
+  .luz { width: 32px; height: 32px; border-radius: 50%; transition: all .4s; }
+  .luz.off { opacity: .1; background: #444; box-shadow: none; }
+  .luz.rojo-on    { background: #ff4a4a; box-shadow: 0 0 14px #ff4a4a88; }
+  .luz.amarillo-on{ background: #f5c842; box-shadow: 0 0 14px #f5c84288; }
+  .luz.verde-on   { background: #00c896; box-shadow: 0 0 14px #00c89688; }
+
+  /* ─── Chart canvas ─── */
+  .chart-wrap { position: relative; width: 100%; height: 200px; margin: 8px 0; }
+
+  /* ─── Flujo de caja ─── */
+  .flujo-toggle { display: flex; background: var(--bg3); border-radius: 10px; padding: 3px; margin-bottom: 16px; }
+  .flujo-toggle button { flex: 1; padding: 7px; border: none; background: none; color: var(--muted); font-size: 12px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: all .2s; font-family: 'DM Sans', sans-serif; }
+  .flujo-toggle button.active { background: var(--accent); color: #000; }
+
+  .periodo-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg3); border-radius: 10px; margin-bottom: 8px; font-size: 13px; cursor: pointer; border: 1px solid var(--border); transition: border-color .2s; }
+  .periodo-row:hover { border-color: var(--accent); }
+  .periodo-label { font-weight: 500; }
+  .periodo-vals { display: flex; gap: 12px; align-items: center; }
+  .periodo-saldo { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; }
+  .positivo { color: var(--accent); }
+  .negativo { color: var(--danger); }
+
+  .add-btn { width: 100%; padding: 12px; background: rgba(0,200,150,.1); border: 1px dashed rgba(0,200,150,.3); border-radius: 10px; color: var(--accent); font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .2s; margin-top: 4px; }
+  .add-btn:hover { background: rgba(0,200,150,.18); }
+
+  /* ─── Modal de entrada de dato ─── */
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: flex-end; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--bg2); border-radius: 20px 20px 0 0; padding: 24px 20px calc(24px + var(--safe-bot)); width: 100%; border-top: 1px solid var(--border); animation: slideUp .25s ease; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal h3 { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 18px; }
+  .modal input, .modal select { width: 100%; padding: 12px 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; font-family: 'DM Sans', sans-serif; margin-bottom: 10px; outline: none; }
+  .modal input:focus, .modal select:focus { border-color: var(--accent); }
+  .modal-btns { display: flex; gap: 10px; margin-top: 6px; }
+  .modal-btns button { flex: 1; padding: 13px; border-radius: 12px; border: none; font-size: 14px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .15s; }
+  .btn-cancel { background: var(--bg3); color: var(--muted); }
+  .btn-ok     { background: var(--accent); color: #000; font-family: 'Syne', sans-serif; font-weight: 700; }
+
+  /* ─── Splash pantalla home ─── */
+  .home-hero { text-align: center; padding: 24px 0 20px; }
+  .home-hero .logo-mark { width: 64px; height: 64px; background: linear-gradient(135deg, rgba(0,200,150,.2), rgba(0,200,150,.05)); border: 1px solid rgba(0,200,150,.3); border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; color: var(--accent); }
+  .home-hero h2 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+  .home-hero p { font-size: 13px; color: var(--muted); max-width: 260px; margin: 0 auto; line-height: 1.6; }
+
+  .stat-grid { display: grid; grid-columns: 1fr 1fr; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .stat-card .s-label { font-size: 11px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; }
+  .stat-card .s-val { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+
+  .install-banner { background: rgba(0,200,150,.08); border: 1px solid rgba(0,200,150,.2); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 14px; cursor: pointer; }
+  .install-banner svg { flex-shrink: 0; width: 20px; height: 20px; stroke: var(--accent); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .install-banner p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .install-banner strong { color: var(--accent); display: block; font-size: 13px; margin-bottom: 2px; }
+
+  /* scrollbar */
+  #content::-webkit-scrollbar { width: 3px; }
+  #content::-webkit-scrollbar-track { background: transparent; }
+  #content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- HEADER -->
+  <div id="header">
+    <div>
+      <h1>Orden Financiero</h1>
+      <div class="subtitle">Tu dinero, en claro</div>
+    </div>
+    <div id="fecha-hoy" style="font-size:12px;color:var(--muted);text-align:right;"></div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content">
+
+    <!-- ══════ PANTALLA 1: HOME ══════ -->
+    <div class="screen active" id="screen-home">
+      <div class="home-hero">
+        <div class="logo-mark">OF</div>
+        <h2>Hola, bienvenido</h2>
+        <p>Usá las herramientas abajo para ver tu dinero con claridad.</p>
+      </div>
+
+      <div id="install-banner" class="install-banner" style="display:none;" onclick="installApp()">
+        <svg viewBox="0 0 24 24"><path d="M12 2v13M7 11l5 5 5-5M3 19h18"/></svg>
+        <div>
+          <strong>Instalá la app en tu celu</strong>
+          <p>Tocá aquí para agregar a tu pantalla de inicio y usarla sin internet.</p>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="home-stats">
+        <div class="stat-card">
+          <div class="s-label">Ingreso mensual</div>
+          <div class="s-val" id="hs-ingreso">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="s-label">Disponible/semana</div>
+          <div class="s-val" id="hs-semana">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="s-label">Gastos hormiga</div>
+          <div class="s-val" id="hs-hormiga" style="color:var(--accent3)">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="s-label">Estado deuda</div>
+          <div class="s-val" id="hs-deuda">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Navegá las herramientas</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div onclick="goScreen('drenaje')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg3);border-radius:10px;cursor:pointer;">
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,107,74,.15);display:flex;align-items:center;justify-content:center;font-size:18px;">💸</div>
+            <div><div style="font-size:13px;font-weight:500;">Drenaje del ingreso</div><div style="font-size:11px;color:var(--muted);">Mirá a dónde va tu plata</div></div>
+            <div style="margin-left:auto;color:var(--muted);">›</div>
+          </div>
+          <div onclick="goScreen('tiempo')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg3);border-radius:10px;cursor:pointer;">
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(0,200,150,.15);display:flex;align-items:center;justify-content:center;font-size:18px;">📈</div>
+            <div><div style="font-size:13px;font-weight:500;">Línea de tiempo</div><div style="font-size:11px;color:var(--muted);">Deuda y ahorro en el tiempo</div></div>
+            <div style="margin-left:auto;color:var(--muted);">›</div>
+          </div>
+          <div onclick="goScreen('semaforo')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg3);border-radius:10px;cursor:pointer;">
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(245,200,66,.15);display:flex;align-items:center;justify-content:center;font-size:18px;">🚦</div>
+            <div><div style="font-size:13px;font-weight:500;">Semáforo semanal</div><div style="font-size:11px;color:var(--muted);">¿Podés gastar esto?</div></div>
+            <div style="margin-left:auto;color:var(--muted);">›</div>
+          </div>
+          <div onclick="goScreen('flujo')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg3);border-radius:10px;cursor:pointer;">
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(130,100,255,.15);display:flex;align-items:center;justify-content:center;font-size:18px;">📅</div>
+            <div><div style="font-size:13px;font-weight:500;">Flujo de caja</div><div style="font-size:11px;color:var(--muted);">Semana a semana o mes a mes</div></div>
+            <div style="margin-left:auto;color:var(--muted);">›</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ PANTALLA 2: DRENAJE ══════ -->
+    <div class="screen" id="screen-drenaje">
+      <div class="card-title" style="margin-bottom:16px;font-size:11px;letter-spacing:.08em;color:var(--muted);">DRENAJE DEL INGRESO</div>
+
+      <div class="card">
+        <div class="ctrl">
+          <label>Ingreso mensual</label>
+          <input type="range" id="d-ingreso" min="30000" max="500000" step="5000" value="150000" oninput="renderDrenaje()">
+          <div class="val" id="dl-ingreso">$150.000</div>
+        </div>
+        <div class="seg-bar" id="d-barra">
+          <div class="seg" id="ds-fijo"    style="background:#C04828;"></div>
+          <div class="seg" id="ds-var"     style="background:#E8593C;"></div>
+          <div class="seg" id="ds-hormiga" style="background:#f5c842;"></div>
+          <div class="seg" id="ds-libre"   style="background:#00c896;"></div>
+        </div>
+        <div class="leyenda">
+          <div class="leyenda-item"><div class="sq" style="background:#C04828;"></div>Fijos</div>
+          <div class="leyenda-item"><div class="sq" style="background:#E8593C;"></div>Variables</div>
+          <div class="leyenda-item"><div class="sq" style="background:#f5c842;"></div>Hormiga</div>
+          <div class="leyenda-item"><div class="sq" style="background:#00c896;"></div>Disponible</div>
+        </div>
+      </div>
+
+      <div class="card" id="d-lista-card">
+        <div class="card-title">Desglose de gastos</div>
+        <div id="d-lista"></div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:baseline;">
+          <span style="font-size:12px;color:var(--muted);">Disponible al mes</span>
+          <span class="big-num" id="d-libre" style="font-size:24px;">$0</span>
+        </div>
+        <div style="margin-top:6px;font-size:11px;color:var(--muted);" id="d-hormiga-pct"></div>
+      </div>
+    </div>
+
+    <!-- ══════ PANTALLA 3: TIEMPO ══════ -->
+    <div class="screen" id="screen-tiempo">
+      <div class="card-title" style="margin-bottom:16px;font-size:11px;letter-spacing:.08em;color:var(--muted);">LÍNEA DE TIEMPO</div>
+
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;gap:6px;margin-bottom:14px;">
+          <button onclick="setModo('deuda',this)"   id="btn-deuda"   style="flex:1;padding:8px;border:1px solid var(--border);background:var(--accent);color:#000;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Saldar deuda</button>
+          <button onclick="setModo('ahorro',this)"  id="btn-ahorro"  style="flex:1;padding:8px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;">Ahorrar</button>
+          <button onclick="setModo('ambos',this)"   id="btn-ambos"   style="flex:1;padding:8px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;">Ambos</button>
+        </div>
+        <div class="ctrl">
+          <label>Deuda inicial</label>
+          <input type="range" id="t-deuda" min="5000" max="500000" step="5000" value="80000" oninput="renderTiempo()">
+          <div class="val" id="tl-deuda">$80.000</div>
+        </div>
+        <div class="ctrl">
+          <label>Pago mensual</label>
+          <input type="range" id="t-pago" min="1000" max="50000" step="500" value="8000" oninput="renderTiempo()">
+          <div class="val" id="tl-pago">$8.000</div>
+        </div>
+        <div class="ctrl" id="t-row-ahorro" style="display:none;">
+          <label>Ahorro mensual</label>
+          <input type="range" id="t-ahorro" min="500" max="30000" step="500" value="3000" oninput="renderTiempo()">
+          <div class="val" id="tl-ahorro">$3.000</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="t-mensaje" style="font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.6;"></div>
+        <div class="chart-wrap"><canvas id="t-chart"></canvas></div>
+        <div style="display:flex;gap:14px;margin-top:8px;font-size:11px;">
+          <span style="display:flex;align-items:center;gap:5px;" id="leg-deuda"><span style="width:16px;height:2px;border-radius:1px;background:#ff4a4a;display:inline-block;"></span>Deuda</span>
+          <span style="display:flex;align-items:center;gap:5px;" id="leg-ahorro" style="display:none;"><span style="width:16px;height:2px;border-radius:1px;background:#00c896;display:inline-block;"></span>Ahorro</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ PANTALLA 4: SEMÁFORO ══════ -->
+    <div class="screen" id="screen-semaforo">
+      <div class="card-title" style="margin-bottom:16px;font-size:11px;letter-spacing:.08em;color:var(--muted);">SEMÁFORO SEMANAL</div>
+
+      <div class="card">
+        <div class="ctrl">
+          <label>Ingreso mensual</label>
+          <input type="range" id="sm-ingreso" min="30000" max="400000" step="5000" value="120000" oninput="renderSemaforo()">
+          <div class="val" id="sml-ingreso">$120.000</div>
+        </div>
+        <div class="ctrl">
+          <label>Gastos fijos/mes</label>
+          <input type="range" id="sm-fijos" min="10000" max="300000" step="2000" value="65000" oninput="renderSemaforo()">
+          <div class="val" id="sml-fijos">$65.000</div>
+        </div>
+        <div class="ctrl">
+          <label>Meta ahorro/mes</label>
+          <input type="range" id="sm-meta" min="0" max="50000" step="500" value="5000" oninput="renderSemaforo()">
+          <div class="val" id="sml-meta">$5.000</div>
+        </div>
+        <div class="ctrl">
+          <label>Gastado esta sem.</label>
+          <input type="range" id="sm-gastado" min="0" max="40000" step="200" value="3000" oninput="renderSemaforo()">
+          <div class="val" id="sml-gastado">$3.000</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;gap:16px;align-items:center;">
+          <div class="semaforo">
+            <div class="luz off" id="sl-rojo"></div>
+            <div class="luz off" id="sl-amarillo"></div>
+            <div class="luz off" id="sl-verde"></div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Podés gastar esta semana</div>
+            <div class="big-num" id="sm-libre">$0</div>
+            <div style="margin-top:8px;font-size:13px;line-height:1.5;" id="sm-estado"></div>
+            <div style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.7;" id="sm-breakdown"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ PANTALLA 5: FLUJO DE CAJA ══════ -->
+    <div class="screen" id="screen-flujo">
+      <div class="card-title" style="margin-bottom:16px;font-size:11px;letter-spacing:.08em;color:var(--muted);">FLUJO DE CAJA</div>
+
+      <div class="flujo-toggle">
+        <button class="active" id="ftb-semana" onclick="setFlujoModo('semana',this)">Semanal</button>
+        <button id="ftb-mes" onclick="setFlujoModo('mes',this)">Mensual</button>
+      </div>
+
+      <div class="card" style="margin-bottom:10px;">
+        <div class="chart-wrap" style="height:180px;"><canvas id="f-chart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" id="f-periodo-titulo">Períodos</div>
+        <div id="f-periodos"></div>
+        <button class="add-btn" onclick="openModal()">+ Agregar movimiento</button>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- NAV -->
+  <div id="nav">
+    <button class="nav-tab active" onclick="goScreen('home')" id="tab-home">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Inicio</span>
+    </button>
+    <button class="nav-tab" onclick="goScreen('drenaje')" id="tab-drenaje">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      <span>Drenaje</span>
+    </button>
+    <button class="nav-tab" onclick="goScreen('tiempo')" id="tab-tiempo">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Tiempo</span>
+    </button>
+    <button class="nav-tab" onclick="goScreen('semaforo')" id="tab-semaforo">
+      <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="7"/><circle cx="12" cy="8" r="2"/><circle cx="12" cy="14" r="2"/><circle cx="12" cy="20" r="0"/></svg>
+      <span>Semáforo</span>
+    </button>
+    <button class="nav-tab" onclick="goScreen('flujo')" id="tab-flujo">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>
+      <span>Flujo</span>
+    </button>
+  </div>
+</div><!-- /app -->
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3>Agregar movimiento</h3>
+    <input type="text"   id="m-desc"  placeholder="Descripción (ej: Supermercado)">
+    <input type="number" id="m-monto" placeholder="Monto ($)" inputmode="numeric">
+    <select id="m-tipo">
+      <option value="ingreso">Ingreso</option>
+      <option value="gasto">Gasto</option>
+    </select>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-ok"     onclick="guardarMovimiento()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ══════════════════════════════════════
+// ESTADO GLOBAL
+// ══════════════════════════════════════
+let modoTiempo = 'deuda';
+let flujoModo  = 'semana';
+let chartTiempo = null;
+let chartFlujo  = null;
+let movimientos = JSON.parse(localStorage.getItem('of_movimientos') || '[]');
+let deferredPrompt = null;
+
+// Capturar prompt instalación PWA
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').style.display = 'flex';
+});
+
+function installApp() {
+  if(deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      document.getElementById('install-banner').style.display = 'none';
+    });
+  }
+}
+
+// Fecha
+const hoy = new Date();
+document.getElementById('fecha-hoy').textContent =
+  hoy.toLocaleDateString('es-AR', { weekday:'short', day:'numeric', month:'short' });
+
+// ══════════════════════════════════════
+// NAVEGACIÓN
+// ══════════════════════════════════════
+function goScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+  if(id==='drenaje')  renderDrenaje();
+  if(id==='tiempo')   renderTiempo();
+  if(id==='semaforo') renderSemaforo();
+  if(id==='flujo')    renderFlujo();
+  if(id==='home')     renderHome();
+}
+
+// ══════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════
+function fmt(n) {
+  return '$' + Math.round(n).toLocaleString('es-AR');
+}
+
+// ══════════════════════════════════════
+// PANTALLA DRENAJE
+// ══════════════════════════════════════
+const gastosBase = [
+  { nombre:"Alquiler / cuota",        monto:45000, tipo:"fijo",     color:"#C04828" },
+  { nombre:"Servicios",               monto:12000, tipo:"fijo",     color:"#C04828" },
+  { nombre:"Supermercado",            monto:22000, tipo:"variable", color:"#E8593C" },
+  { nombre:"Transporte",              monto:8000,  tipo:"variable", color:"#E8593C" },
+  { nombre:"Salud",                   monto:5000,  tipo:"variable", color:"#E8593C" },
+  { nombre:"Cafés y kioscos",         monto:6500,  tipo:"hormiga",  color:"#f5c842" },
+  { nombre:"Delivery",                monto:8000,  tipo:"hormiga",  color:"#f5c842" },
+  { nombre:"Suscripciones",           monto:4500,  tipo:"hormiga",  color:"#f5c842" },
+  { nombre:"Salidas / ocio",          monto:5000,  tipo:"hormiga",  color:"#f5c842" },
+];
+
+function renderDrenaje() {
+  const ing = parseInt(document.getElementById('d-ingreso').value);
+  document.getElementById('dl-ingreso').textContent = fmt(ing);
+
+  const lista = document.getElementById('d-lista');
+  lista.innerHTML = gastosBase.map(g => `
+    <div class="gasto-row">
+      <div class="dot" style="background:${g.color};"></div>
+      <span style="flex:1;font-size:13px;">${g.nombre}</span>
+      <span style="font-size:12px;color:var(--muted);">${fmt(g.monto)}</span>
+      <span style="font-size:11px;color:var(--muted);min-width:32px;text-align:right;">${Math.round(g.monto/ing*100)}%</span>
+    </div>`).join('');
+
+  const fijos   = gastosBase.filter(g=>g.tipo==='fijo').reduce((a,g)=>a+g.monto,0);
+  const vars    = gastosBase.filter(g=>g.tipo==='variable').reduce((a,g)=>a+g.monto,0);
+  const hormiga = gastosBase.filter(g=>g.tipo==='hormiga').reduce((a,g)=>a+g.monto,0);
+  const libre   = Math.max(0, ing - fijos - vars - hormiga);
+
+  const pF = Math.min(fijos/ing*100, 100);
+  const pV = Math.min(vars/ing*100,  100-pF);
+  const pH = Math.min(hormiga/ing*100, 100-pF-pV);
+  const pL = Math.max(0, 100-pF-pV-pH);
+
+  document.getElementById('ds-fijo').style.width    = pF+'%';
+  document.getElementById('ds-var').style.width     = pV+'%';
+  document.getElementById('ds-hormiga').style.width = pH+'%';
+  document.getElementById('ds-libre').style.width   = pL+'%';
+
+  const el = document.getElementById('d-libre');
+  el.textContent = fmt(libre);
+  el.style.color = libre > 0 ? 'var(--accent)' : 'var(--danger)';
+
+  document.getElementById('d-hormiga-pct').textContent =
+    `Los gastos hormiga representan el ${Math.round(hormiga/ing*100)}% de tu ingreso.`;
+
+  // Actualizar home stats
+  localStorage.setItem('of_ingreso', ing);
+  localStorage.setItem('of_hormiga_pct', Math.round(hormiga/ing*100));
+}
+
+// ══════════════════════════════════════
+// PANTALLA TIEMPO
+// ══════════════════════════════════════
+function setModo(modo, btn) {
+  modoTiempo = modo;
+  ['deuda','ahorro','ambos'].forEach(m => {
+    const b = document.getElementById('btn-'+m);
+    b.style.background = m===modo ? 'var(--accent)' : 'var(--bg3)';
+    b.style.color      = m===modo ? '#000' : 'var(--muted)';
+    b.style.fontWeight = m===modo ? '600' : '500';
+  });
+  document.getElementById('t-row-ahorro').style.display =
+    (modo==='ahorro'||modo==='ambos') ? 'flex' : 'none';
+  document.getElementById('leg-ahorro').style.display =
+    (modo==='ahorro'||modo==='ambos') ? 'flex' : 'none';
+  renderTiempo();
+}
+
+function renderTiempo() {
+  const deudaIni = parseInt(document.getElementById('t-deuda').value);
+  const pagoMes  = parseInt(document.getElementById('t-pago').value);
+  const ahorroM  = parseInt(document.getElementById('t-ahorro').value);
+  document.getElementById('tl-deuda').textContent  = fmt(deudaIni);
+  document.getElementById('tl-pago').textContent   = fmt(pagoMes);
+  document.getElementById('tl-ahorro').textContent = fmt(ahorroM);
+
+  const interes = 0.03;
+  const meses = 24;
+  const labels = ['Hoy'];
+  const deudaLine = [deudaIni];
+  const ahorroLine = [0];
+  let d = deudaIni, a = 0;
+
+  for(let i=1;i<=meses;i++){
+    labels.push('M'+i);
+    if(modoTiempo!=='ahorro') d = Math.max(0, d*(1+interes)-pagoMes);
+    if(modoTiempo!=='deuda')  a += ahorroM;
+    deudaLine.push(Math.round(d));
+    ahorroLine.push(Math.round(a));
+  }
+
+  // Cuántos meses para saldar
+  let mesesSalda = null;
+  if(modoTiempo!=='ahorro'){
+    let dd = deudaIni;
+    for(let m=1;m<=120;m++){
+      dd = Math.max(0, dd*(1+interes)-pagoMes);
+      if(dd<=0){ mesesSalda=m; break; }
+    }
+  }
+
+  const msg = mesesSalda
+    ? `Pagando ${fmt(pagoMes)}/mes, saldás la deuda en <strong style="color:var(--accent)">${mesesSalda} meses</strong> (${(mesesSalda/12).toFixed(1)} años).`
+    : modoTiempo==='ahorro'
+      ? `En 24 meses acumulás <strong style="color:var(--accent)">${fmt(ahorroM*24)}</strong>.`
+      : `Con este pago la deuda no se cancela en 10 años. <span style="color:var(--danger)">Subí el pago mensual.</span>`;
+
+  document.getElementById('t-mensaje').innerHTML = msg;
+
+  const datasets = [];
+  if(modoTiempo!=='ahorro') datasets.push({
+    label:'Deuda', data:deudaLine,
+    borderColor:'#ff4a4a', backgroundColor:'rgba(255,74,74,.07)',
+    borderWidth:2, fill:true, tension:.4, pointRadius:0, pointHoverRadius:4
+  });
+  if(modoTiempo!=='deuda') datasets.push({
+    label:'Ahorro', data:ahorroLine,
+    borderColor:'#00c896', backgroundColor:'rgba(0,200,150,.07)',
+    borderWidth:2, fill:true, tension:.4, pointRadius:0, pointHoverRadius:4
+  });
+
+  if(chartTiempo) chartTiempo.destroy();
+  chartTiempo = new Chart(document.getElementById('t-chart'), {
+    type:'line',
+    data:{ labels, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{
+        backgroundColor:'#16232f', borderColor:'rgba(255,255,255,.1)', borderWidth:1,
+        callbacks:{ label: ctx => ' '+fmt(ctx.parsed.y) }
+      }},
+      scales:{
+        x:{ grid:{color:'rgba(255,255,255,.04)'}, ticks:{maxTicksLimit:7, color:'#7a9ab5', font:{size:10}} },
+        y:{ grid:{color:'rgba(255,255,255,.04)'}, ticks:{
+          callback: v => v>=1000?'$'+(v/1000).toFixed(0)+'k':'$'+v,
+          color:'#7a9ab5', font:{size:10}
+        }}
+      }
+    }
+  });
+
+  localStorage.setItem('of_deuda', deudaIni);
+  localStorage.setItem('of_meses_salda', mesesSalda || '—');
+}
+
+// ══════════════════════════════════════
+// PANTALLA SEMÁFORO
+// ══════════════════════════════════════
+function renderSemaforo() {
+  const ing     = parseInt(document.getElementById('sm-ingreso').value);
+  const fijos   = parseInt(document.getElementById('sm-fijos').value);
+  const meta    = parseInt(document.getElementById('sm-meta').value);
+  const gastado = parseInt(document.getElementById('sm-gastado').value);
+
+  document.getElementById('sml-ingreso').textContent = fmt(ing);
+  document.getElementById('sml-fijos').textContent   = fmt(fijos);
+  document.getElementById('sml-meta').textContent    = fmt(meta);
+  document.getElementById('sml-gastado').textContent = fmt(gastado);
+
+  const libreTotal = Math.max(0, ing - fijos - meta);
+  const libreSem   = libreTotal / 4.3;
+  const restante   = libreSem - gastado;
+  const pct        = gastado / libreSem;
+
+  let luz, color, estado;
+  if(restante < 0){
+    luz='rojo'; color='var(--danger)';
+    estado='⚠ Superaste tu límite esta semana.';
+  } else if(pct > 0.7){
+    luz='amarillo'; color='var(--accent3)';
+    estado='Cuidado — usaste más del 70% de tu cupo.';
+  } else {
+    luz='verde'; color='var(--accent)';
+    estado='Bien. Seguís dentro de tu plan.';
+  }
+
+  document.getElementById('sm-libre').textContent = fmt(Math.max(0,restante));
+  document.getElementById('sm-libre').style.color = color;
+  document.getElementById('sm-estado').textContent = estado;
+  document.getElementById('sm-estado').style.color = color;
+  document.getElementById('sm-breakdown').innerHTML =
+    `Cupo semanal: ${fmt(libreSem)}<br>Gastado: ${fmt(gastado)} (${Math.round(pct*100)}%)<br>Libre mensual total: ${fmt(libreTotal)}`;
+
+  ['rojo','amarillo','verde'].forEach(l => {
+    const el = document.getElementById('sl-'+l);
+    el.className = 'luz ' + (l===luz ? l+'-on' : 'off');
+  });
+
+  localStorage.setItem('of_sem_libre', Math.max(0,restante));
+}
+
+// ══════════════════════════════════════
+// PANTALLA FLUJO DE CAJA
+// ══════════════════════════════════════
+function setFlujoModo(modo, btn) {
+  flujoModo = modo;
+  document.getElementById('ftb-semana').classList.toggle('active', modo==='semana');
+  document.getElementById('ftb-mes').classList.toggle('active', modo==='mes');
+  renderFlujo();
+}
+
+function getPeriodoLabel(i) {
+  const d = new Date();
+  if(flujoModo==='semana'){
+    d.setDate(d.getDate() + i*7);
+    return 'Sem ' + d.toLocaleDateString('es-AR',{day:'numeric',month:'short'});
+  } else {
+    d.setMonth(d.getMonth() + i);
+    return d.toLocaleDateString('es-AR',{month:'short',year:'2-digit'});
+  }
+}
+
+function renderFlujo() {
+  const N = flujoModo==='semana' ? 8 : 6;
+  document.getElementById('f-periodo-titulo').textContent =
+    flujoModo==='semana' ? 'Últimas semanas' : 'Últimos meses';
+
+  // Agrupar movimientos por período
+  const periodos = Array.from({length:N}, (_,i) => ({
+    label: getPeriodoLabel(-N+1+i),
+    ingresos: 0, gastos: 0, items: []
+  }));
+
+  // Distribuir movimientos de localStorage en períodos (los últimos N)
+  movimientos.slice(-N*5).forEach((m,idx) => {
+    const p = periodos[Math.min(idx % N, N-1)];
+    if(m.tipo==='ingreso') p.ingresos += m.monto;
+    else p.gastos += m.monto;
+    p.items.push(m);
+  });
+
+  // Añadir datos de ejemplo si no hay movimientos
+  if(movimientos.length === 0) {
+    const ejemplos = [
+      [22000,0],[18000,0],[25000,0],[0,14000],[0,8500],[0,11000],[30000,0],[0,19000]
+    ];
+    periodos.forEach((p,i) => {
+      if(i < ejemplos.length){
+        p.ingresos = ejemplos[i][0];
+        p.gastos   = ejemplos[i][1];
+      }
+    });
+  }
+
+  // Gráfico de barras
+  const labels = periodos.map(p=>p.label);
+  const saldos = periodos.map(p=>p.ingresos - p.gastos);
+  const colores = saldos.map(s => s>=0 ? '#00c896' : '#ff4a4a');
+
+  if(chartFlujo) chartFlujo.destroy();
+  chartFlujo = new Chart(document.getElementById('f-chart'), {
+    type:'bar',
+    data:{ labels, datasets:[{
+      label:'Saldo', data:saldos,
+      backgroundColor: colores,
+      borderRadius: 6, borderSkipped: false
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{
+        backgroundColor:'#16232f', borderColor:'rgba(255,255,255,.1)', borderWidth:1,
+        callbacks:{ label: ctx => ' '+fmt(ctx.parsed.y) }
+      }},
+      scales:{
+        x:{ grid:{display:false}, ticks:{color:'#7a9ab5',font:{size:10}} },
+        y:{ grid:{color:'rgba(255,255,255,.04)'}, ticks:{
+          callback:v=>v>=1000?'$'+(v/1000).toFixed(0)+'k':'$'+v,
+          color:'#7a9ab5',font:{size:10}
+        }}
+      }
+    }
+  });
+
+  // Lista de períodos
+  const cont = document.getElementById('f-periodos');
+  cont.innerHTML = periodos.map((p,i) => {
+    const saldo = p.ingresos - p.gastos;
+    const cls   = saldo>=0?'positivo':'negativo';
+    return `<div class="periodo-row">
+      <span class="periodo-label">${p.label}</span>
+      <div class="periodo-vals">
+        <span style="font-size:11px;color:var(--muted);">${p.ingresos>0?'▲'+fmt(p.ingresos):''}${p.gastos>0?' ▼'+fmt(p.gastos):''}</span>
+        <span class="periodo-saldo ${cls}">${saldo>=0?'+':''}${fmt(saldo)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════
+// MODAL DE MOVIMIENTO
+// ══════════════════════════════════════
+function openModal() {
+  document.getElementById('modal').classList.add('open');
+  setTimeout(()=>document.getElementById('m-desc').focus(), 300);
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('m-desc').value = '';
+  document.getElementById('m-monto').value = '';
+}
+function guardarMovimiento() {
+  const desc  = document.getElementById('m-desc').value.trim();
+  const monto = parseFloat(document.getElementById('m-monto').value);
+  const tipo  = document.getElementById('m-tipo').value;
+  if(!desc || !monto || monto<=0) return;
+  movimientos.push({ desc, monto, tipo, fecha: new Date().toISOString() });
+  localStorage.setItem('of_movimientos', JSON.stringify(movimientos));
+  closeModal();
+  renderFlujo();
+}
+document.getElementById('modal').addEventListener('click', e => {
+  if(e.target===document.getElementById('modal')) closeModal();
+});
+
+// ══════════════════════════════════════
+// HOME STATS
+// ══════════════════════════════════════
+function renderHome() {
+  const ing     = parseInt(localStorage.getItem('of_ingreso') || 150000);
+  const semL    = parseInt(localStorage.getItem('of_sem_libre') || 0);
+  const hPct    = localStorage.getItem('of_hormiga_pct') || '—';
+  const mSalda  = localStorage.getItem('of_meses_salda') || '—';
+
+  document.getElementById('hs-ingreso').textContent  = fmt(ing);
+  document.getElementById('hs-semana').textContent   = semL > 0 ? fmt(semL) : 'Configurá →';
+  document.getElementById('hs-hormiga').textContent  = hPct !== '—' ? hPct+'%' : 'Configurá →';
+  document.getElementById('hs-deuda').textContent    = mSalda !== '—' && mSalda !== 'null' ? mSalda+' meses' : 'Configurá →';
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+renderDrenaje();
+renderHome();
+
+// Service Worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
